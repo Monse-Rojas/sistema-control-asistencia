@@ -1,10 +1,39 @@
 /**
  * Sistema de Control de Asistencia de Alumnos
  * Estilo Cute, Coqueto y Moderno 🌸✨
- * Desarrollado con JavaScript Vanilla
+ * Desarrollado con JavaScript Vanilla y Supabase
  */
 
-// Clave para almacenamiento en LocalStorage
+// ==========================================================================
+// Configuración de Supabase
+// ==========================================================================
+const SUPABASE_URL = 'https://pvunuzruywavlyxrxibt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dW51enJ1eXdhdmx5eHJ4aWJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0ODI4ODcsImV4cCI6MjEwNDA1ODg4N30.GrB9OSA55UebDMRMUnL936nCeQGB3IC9VZxwWHG36k0';
+
+// Cliente de Supabase (usamos 'supabaseClient' para no colisionar con la variable global 'supabase' de la librería)
+let supabaseClient = null;
+
+function obtenerClienteSupabase() {
+  if (!supabaseClient && typeof window !== 'undefined' && window.supabase && typeof window.supabase.createClient === 'function') {
+    try {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (err) {
+      console.warn('Aviso: no se pudo inicializar supabaseClient:', err);
+    }
+  }
+  return supabaseClient;
+}
+
+// Intentar inicialización inmediata
+obtenerClienteSupabase();
+
+// Bandera para verificar si la tabla 'asistencias' está disponible en Supabase
+let supabaseDisponible = false;
+
+// Evitar doble registro simultáneo por clic y submit
+let procesandoRegistro = false;
+
+// Clave para almacenamiento en LocalStorage (respaldo y modo offline permanente)
 const STORAGE_KEY = 'asistencia_escolar_alumnos_v1';
 
 // Estado de la aplicación
@@ -19,46 +48,42 @@ const PASTEL_AVATAR_PALETTE = [
   { bg: '#fef3c7', text: '#92400e' }  // Melocotón pastel
 ];
 
-// Elementos del DOM
-const formAsistencia = document.getElementById('formAsistencia');
-const inputNombre = document.getElementById('inputNombre');
-const inputFecha = document.getElementById('inputFecha');
-const inputHoraEntrada = document.getElementById('inputHoraEntrada');
-const inputHoraSalida = document.getElementById('inputHoraSalida');
-const selectEstado = document.getElementById('selectEstado');
-const errorNombre = document.getElementById('errorNombre');
-const btnLimpiar = document.getElementById('btnLimpiar');
+// Elementos del DOM (se resuelven de forma segura en inicializarApp)
+let formAsistencia = null;
+let btnGuardar = null;
+let inputNombre = null;
+let inputFecha = null;
+let inputHoraEntrada = null;
+let inputHoraSalida = null;
+let selectEstado = null;
+let errorNombre = null;
+let btnLimpiar = null;
 
-const tbodyAsistencia = document.getElementById('tbodyAsistencia');
-const emptyState = document.getElementById('emptyState');
-const conteoRegistros = document.getElementById('conteoRegistros');
-const currentDateDisplay = document.getElementById('currentDateDisplay');
+let tbodyAsistencia = null;
+let emptyState = null;
+let conteoRegistros = null;
+let currentDateDisplay = null;
+let syncStatusBadge = null;
 
-// Filtros
-const filtroNombre = document.getElementById('filtroNombre');
-const filtroEstado = document.getElementById('filtroEstado');
-const filtroFecha = document.getElementById('filtroFecha');
+let filtroNombre = null;
+let filtroEstado = null;
+let filtroFecha = null;
 
-// Tarjetas de Estadísticas
-const cardTotalHoy = document.getElementById('cardTotalHoy');
-const cardSubtextHoy = document.getElementById('cardSubtextHoy');
-const statPresentesHoy = document.getElementById('statPresentesHoy');
-const statRetardosHoy = document.getElementById('statRetardosHoy');
-const statFaltasHoy = document.getElementById('statFaltasHoy');
+let cardTotalHoy = null;
+let cardSubtextHoy = null;
+let statPresentesHoy = null;
+let statRetardosHoy = null;
+let statFaltasHoy = null;
 
-// Botones auxiliares
-const btnCargarDemo = document.getElementById('btnCargarDemo');
-const btnBorrarTodo = document.getElementById('btnBorrarTodo');
-const toastNotification = document.getElementById('toastNotification');
-const toastMessage = document.getElementById('toastMessage');
+let btnCargarDemo = null;
+let btnBorrarTodo = null;
+let toastNotification = null;
+let toastMessage = null;
 
 // ==========================================================================
 // Utilidades de Fecha, Hora y Estilo
 // ==========================================================================
 
-/**
- * Retorna la fecha local actual en formato YYYY-MM-DD
- */
 function getFechaLocalActual() {
   const hoy = new Date();
   const year = hoy.getFullYear();
@@ -67,9 +92,6 @@ function getFechaLocalActual() {
   return `${year}-${month}-${day}`;
 }
 
-/**
- * Retorna la hora local actual en formato HH:MM
- */
 function getHoraLocalActual() {
   const ahora = new Date();
   const hours = String(ahora.getHours()).padStart(2, '0');
@@ -77,66 +99,67 @@ function getHoraLocalActual() {
   return `${hours}:${minutes}`;
 }
 
-/**
- * Formatea una fecha YYYY-MM-DD a formato amigable DD/MM/YYYY
- */
 function formatearFecha(fechaStr) {
   if (!fechaStr) return '--/--/----';
-  const partes = fechaStr.split('-');
+  const partes = String(fechaStr).split('-');
   if (partes.length === 3) {
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
   }
   return fechaStr;
 }
 
-/**
- * Formatea hora militar a formato 12 hrs con am/pm
- */
 function formatearHora(horaStr) {
   if (!horaStr) return '-';
-  const [h, m] = horaStr.split(':');
+  const [h, m] = String(horaStr).split(':');
+  if (h === undefined || m === undefined) return horaStr;
   const numH = parseInt(h, 10);
   const ampm = numH >= 12 ? 'p.m.' : 'a.m.';
   const h12 = numH % 12 || 12;
   return `${h12}:${m} ${ampm}`;
 }
 
-/**
- * Retorna un estilo de color pastel aleatorio pero determinista según el nombre
- */
 function getAvatarStyle(nombre) {
+  const str = String(nombre || 'Alumno');
   let hash = 0;
-  for (let i = 0; i < nombre.length; i++) {
-    hash = nombre.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
   const color = PASTEL_AVATAR_PALETTE[Math.abs(hash) % PASTEL_AVATAR_PALETTE.length];
   return `background-color: ${color.bg}; color: ${color.text}; border: 1.5px solid ${color.bg};`;
 }
 
-/**
- * Escapa HTML para prevenir inyección de código
- */
 function escapeHtml(texto) {
   const div = document.createElement('div');
-  div.textContent = texto;
+  div.textContent = texto || '';
   return div.innerHTML;
 }
 
-/**
- * Muestra notificación flotante (toast) con estilo cute
- */
 let toastTimeout = null;
 function mostrarToast(mensaje) {
+  if (!toastNotification || !toastMessage) return;
   if (toastTimeout) clearTimeout(toastTimeout);
   toastMessage.textContent = mensaje;
   toastNotification.classList.remove('hidden');
   toastTimeout = setTimeout(() => {
     toastNotification.classList.add('hidden');
-  }, 3200);
+  }, 3500);
+}
+
+function actualizarBadgeEstado(conectado) {
+  if (!syncStatusBadge) return;
+  if (conectado) {
+    syncStatusBadge.className = 'sync-badge synced';
+    syncStatusBadge.innerHTML = '☁️ Supabase Conectado';
+    syncStatusBadge.title = 'Sincronizando en tiempo real con tu base de datos en la nube (Supabase)';
+  } else {
+    syncStatusBadge.className = 'sync-badge';
+    syncStatusBadge.innerHTML = '💾 Modo Local Seguro';
+    syncStatusBadge.title = 'Guardando permanentemente en LocalStorage.';
+  }
 }
 
 // ==========================================================================
-// Persistencia en LocalStorage
+// Persistencia y Sincronización (Supabase + LocalStorage)
 // ==========================================================================
 
 function guardarEnStorage() {
@@ -147,7 +170,38 @@ function guardarEnStorage() {
   }
 }
 
-function cargarDeStorage() {
+async function verificarConexionSupabase() {
+  const client = obtenerClienteSupabase();
+  if (!client) {
+    console.info('ℹ️ Supabase JS SDK cargando o no disponible, operando en modo local.');
+    actualizarBadgeEstado(false);
+    return false;
+  }
+
+  try {
+    const { data, error } = await client.from('asistencias').select('id').limit(1);
+
+    if (!error) {
+      supabaseDisponible = true;
+      actualizarBadgeEstado(true);
+      console.log('🌸 [Supabase]: Conexión exitosa y tabla "asistencias" operativa.');
+      return true;
+    } else {
+      supabaseDisponible = false;
+      actualizarBadgeEstado(false);
+      console.info('ℹ️ [Supabase Info]:', error.message);
+      return false;
+    }
+  } catch (err) {
+    console.warn('ℹ️ [Supabase Catch]:', err);
+    supabaseDisponible = false;
+    actualizarBadgeEstado(false);
+    return false;
+  }
+}
+
+async function cargarDeStorage() {
+  // 1. Carga inmediata de LocalStorage para visualización sin retraso
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (data) {
@@ -159,6 +213,43 @@ function cargarDeStorage() {
     console.error('Error al leer de LocalStorage:', e);
     registros = [];
   }
+
+  renderTabla();
+
+  // 2. Verificar disponibilidad de Supabase y sincronizar si hay datos en la nube
+  const ok = await verificarConexionSupabase();
+  if (ok) {
+    const client = obtenerClienteSupabase();
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('asistencias')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          console.log(`☁️ ${data.length} registro(s) sincronizados desde Supabase.`);
+          registros = data.map(item => ({
+            id: item.id || ('asist_' + Date.now()),
+            nombre: item.nombre || 'Sin nombre',
+            fecha: item.fecha || getFechaLocalActual(),
+            horaEntrada: item.hora_entrada || item.horaEntrada || '',
+            horaSalida: item.hora_salida || item.horaSalida || '',
+            estado: item.estado || 'Presente',
+            creadoEn: item.created_at || item.creadoEn || new Date().toISOString()
+          }));
+          guardarEnStorage();
+          renderTabla();
+        } else if (registros.length === 0) {
+          cargarDatosDemo();
+        }
+      } catch (err) {
+        console.info('Aviso al sincronizar registros de Supabase:', err);
+      }
+    }
+  } else if (registros.length === 0) {
+    cargarDatosDemo();
+  }
 }
 
 // ==========================================================================
@@ -166,10 +257,10 @@ function cargarDeStorage() {
 // ==========================================================================
 
 function actualizarEstadisticas() {
+  if (!cardTotalHoy || !cardSubtextHoy) return;
   const hoyStr = getFechaLocalActual();
 
-  // Filtrar todos los registros de la fecha actual
-  const registrosHoy = registros.filter(r => r.fecha === hoyStr);
+  const registrosHoy = registros.filter(r => r && r.fecha === hoyStr);
 
   let presentesHoy = 0;
   let retardosHoy = 0;
@@ -181,10 +272,8 @@ function actualizarEstadisticas() {
     else if (r.estado === 'Falta') faltasHoy++;
   });
 
-  // Alumnos que asistieron (Presentes + Retardos)
   const totalLlegaron = presentesHoy + retardosHoy;
 
-  // Actualizar tarjeta principal
   if (totalLlegaron === 1) {
     cardTotalHoy.textContent = `Hoy llegó 1 alumno`;
   } else {
@@ -193,10 +282,9 @@ function actualizarEstadisticas() {
 
   cardSubtextHoy.textContent = `🌸 ${presentesHoy} puntual(es), ⏳ ${retardosHoy} con retardo. (${registrosHoy.length} registrados hoy)`;
 
-  // Actualizar tarjetas secundarias
-  statPresentesHoy.textContent = presentesHoy;
-  statRetardosHoy.textContent = retardosHoy;
-  statFaltasHoy.textContent = faltasHoy;
+  if (statPresentesHoy) statPresentesHoy.textContent = presentesHoy;
+  if (statRetardosHoy) statRetardosHoy.textContent = retardosHoy;
+  if (statFaltasHoy) statFaltasHoy.textContent = faltasHoy;
 }
 
 // ==========================================================================
@@ -204,42 +292,42 @@ function actualizarEstadisticas() {
 // ==========================================================================
 
 function renderTabla() {
-  const busqueda = filtroNombre.value.trim().toLowerCase();
-  const estadoFiltro = filtroEstado.value;
-  const fechaFiltro = filtroFecha.value;
+  if (!tbodyAsistencia) return;
+
+  const busqueda = filtroNombre ? filtroNombre.value.trim().toLowerCase() : '';
+  const estadoFiltro = filtroEstado ? filtroEstado.value : 'todos';
+  const fechaFiltro = filtroFecha ? filtroFecha.value : 'todos';
   const hoyStr = getFechaLocalActual();
 
-  // Filtrar según controles
   const registrosFiltrados = registros.filter(r => {
-    const coincideNombre = r.nombre.toLowerCase().includes(busqueda);
+    if (!r) return false;
+    const nombre = String(r.nombre || '').toLowerCase();
+    const coincideNombre = nombre.includes(busqueda);
     const coincideEstado = estadoFiltro === 'todos' || r.estado === estadoFiltro;
     const coincideFecha = fechaFiltro === 'todos' || (fechaFiltro === 'hoy' && r.fecha === hoyStr);
     return coincideNombre && coincideEstado && coincideFecha;
   });
 
-  // Limpiar cuerpo de la tabla
   tbodyAsistencia.innerHTML = '';
 
   if (registrosFiltrados.length === 0) {
-    emptyState.classList.remove('hidden');
+    if (emptyState) emptyState.classList.remove('hidden');
   } else {
-    emptyState.classList.add('hidden');
+    if (emptyState) emptyState.classList.add('hidden');
 
     registrosFiltrados.forEach((item, index) => {
       const tr = document.createElement('tr');
 
-      // Iniciales para el avatar
-      const iniciales = item.nombre
+      const nombreLimpio = String(item.nombre || 'Alumno');
+      const iniciales = nombreLimpio
         .split(' ')
         .filter(n => n.length > 0)
         .slice(0, 2)
         .map(n => n[0].toUpperCase())
         .join('');
 
-      // Estilo pastel para el avatar
-      const avatarStyle = getAvatarStyle(item.nombre);
+      const avatarStyle = getAvatarStyle(nombreLimpio);
 
-      // Icono sutil según estado
       let emojiEstado = '✨';
       if (item.estado === 'Retardo') emojiEstado = '⏳';
       else if (item.estado === 'Falta') emojiEstado = '💤';
@@ -249,20 +337,20 @@ function renderTabla() {
         <td>
           <div class="student-name">
             <span class="student-avatar" style="${avatarStyle}">${escapeHtml(iniciales || 'A')}</span>
-            <span>${escapeHtml(item.nombre)}</span>
+            <span>${escapeHtml(nombreLimpio)}</span>
           </div>
         </td>
         <td><span style="font-weight: 600; color: #574b66;">${formatearFecha(item.fecha)}</span></td>
         <td><span class="time-text">${formatearHora(item.horaEntrada)}</span></td>
         <td><span class="time-text">${formatearHora(item.horaSalida)}</span></td>
         <td>
-          <span class="badge badge-${escapeHtml(item.estado)}">
+          <span class="badge badge-${escapeHtml(item.estado || 'Presente')}">
             <span>${emojiEstado}</span>
-            <span>${escapeHtml(item.estado)}</span>
+            <span>${escapeHtml(item.estado || 'Presente')}</span>
           </span>
         </td>
         <td class="text-center">
-          <button class="btn-delete" title="Eliminar este registro" onclick="eliminarRegistro('${item.id}')">
+          <button class="btn-delete" type="button" title="Eliminar este registro" onclick="eliminarRegistro('${item.id}')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -277,9 +365,10 @@ function renderTabla() {
     });
   }
 
-  conteoRegistros.textContent = `Mostrando ${registrosFiltrados.length} de ${registros.length} registro(s) en total ✨`;
+  if (conteoRegistros) {
+    conteoRegistros.textContent = `Mostrando ${registrosFiltrados.length} de ${registros.length} registro(s) en total ✨`;
+  }
   
-  // Actualizar tarjeta del día siempre que se refresque la vista
   actualizarEstadisticas();
 }
 
@@ -288,59 +377,109 @@ function renderTabla() {
 // ==========================================================================
 
 function registrarAsistencia(e) {
-  e.preventDefault();
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
 
-  const nombre = inputNombre.value.trim();
-  const fecha = inputFecha.value;
-  const horaEntrada = inputHoraEntrada.value;
-  const horaSalida = inputHoraSalida.value;
-  const estado = selectEstado.value;
+  if (procesandoRegistro) return;
+  procesandoRegistro = true;
+  setTimeout(() => { procesandoRegistro = false; }, 400);
 
-  // Validación de nombre obligatorio
+  console.log('🌸 [Evento Guardar]: Leyendo datos del formulario...');
+
+  const elNombre = document.getElementById('inputNombre');
+  const elFecha = document.getElementById('inputFecha');
+  const elHoraEntrada = document.getElementById('inputHoraEntrada');
+  const elHoraSalida = document.getElementById('inputHoraSalida');
+  const elEstado = document.getElementById('selectEstado');
+  const elErrorNombre = document.getElementById('errorNombre');
+
+  const nombre = elNombre ? elNombre.value.trim() : '';
+  const fecha = (elFecha && elFecha.value) ? elFecha.value : getFechaLocalActual();
+  const horaEntrada = (elHoraEntrada && elHoraEntrada.value) ? elHoraEntrada.value : getHoraLocalActual();
+  const horaSalida = elHoraSalida ? elHoraSalida.value.trim() : '';
+  const estado = elEstado ? elEstado.value : 'Presente';
+
   if (!nombre) {
-    errorNombre.classList.add('visible');
-    inputNombre.focus();
+    console.warn('⚠️ Validación: El nombre del alumno está vacío.');
+    if (elErrorNombre) elErrorNombre.classList.add('visible');
+    if (elNombre) elNombre.focus();
+    mostrarToast('⚠️ Por favor ingresa el nombre del alumno');
     return;
   }
-  errorNombre.classList.remove('visible');
-
-  // Si no hay fecha o entrada, completar con valores por defecto
-  const fechaFinal = fecha || getFechaLocalActual();
-  const horaEntradaFinal = horaEntrada || getHoraLocalActual();
+  if (elErrorNombre) elErrorNombre.classList.remove('visible');
 
   const nuevoRegistro = {
     id: 'asist_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
     nombre: nombre,
-    fecha: fechaFinal,
-    horaEntrada: horaEntradaFinal,
+    fecha: fecha,
+    horaEntrada: horaEntrada,
     horaSalida: horaSalida || '',
     estado: estado,
     creadoEn: new Date().toISOString()
   };
 
-  // Agregar al inicio del arreglo para ver el más reciente arriba
+  console.log('📝 Datos listos para guardar:', nuevoRegistro);
+
+  // 1. Guardar de inmediato en memoria y LocalStorage
   registros.unshift(nuevoRegistro);
   guardarEnStorage();
   renderTabla();
 
-  // Resetear formulario conservando fecha y hora para fluidez
-  inputNombre.value = '';
-  inputHoraSalida.value = '';
-  selectEstado.value = 'Presente';
-  inputHoraEntrada.value = getHoraLocalActual();
-  inputNombre.focus();
+  // 2. Si Supabase está conectado, guardar en la nube
+  const client = obtenerClienteSupabase();
+  if (client && supabaseDisponible) {
+    console.log('☁️ Enviando registro a Supabase (asistencias)...');
+    client
+      .from('asistencias')
+      .insert([{
+        id: nuevoRegistro.id,
+        nombre: nuevoRegistro.nombre,
+        fecha: nuevoRegistro.fecha,
+        hora_entrada: nuevoRegistro.horaEntrada,
+        hora_salida: nuevoRegistro.horaSalida || null,
+        estado: nuevoRegistro.estado,
+        created_at: nuevoRegistro.creadoEn
+      }])
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('❌ Error Supabase al guardar:', error.message);
+          mostrarToast(`💾 Guardado localmente. (Supabase aviso: ${error.message})`);
+        } else {
+          console.log('☁️ ¡Guardado exitoso en Supabase!');
+        }
+      })
+      .catch(err => {
+        console.error('❌ Error de red Supabase:', err);
+      });
+  }
+
+  // 3. Resetear formulario conservando fecha y hora para agilidad
+  if (elNombre) elNombre.value = '';
+  if (elHoraSalida) elHoraSalida.value = '';
+  if (elEstado) elEstado.value = 'Presente';
+  if (elHoraEntrada) elHoraEntrada.value = getHoraLocalActual();
+  if (elNombre) elNombre.focus();
 
   mostrarToast(`✨ ¡Asistencia de "${nuevoRegistro.nombre}" guardada con éxito!`);
 }
 
 function resetFormulario() {
-  inputNombre.value = '';
-  inputFecha.value = getFechaLocalActual();
-  inputHoraEntrada.value = getHoraLocalActual();
-  inputHoraSalida.value = '';
-  selectEstado.value = 'Presente';
-  errorNombre.classList.remove('visible');
-  inputNombre.focus();
+  const elNombre = document.getElementById('inputNombre');
+  const elFecha = document.getElementById('inputFecha');
+  const elHoraEntrada = document.getElementById('inputHoraEntrada');
+  const elHoraSalida = document.getElementById('inputHoraSalida');
+  const elEstado = document.getElementById('selectEstado');
+  const elErrorNombre = document.getElementById('errorNombre');
+
+  if (elNombre) elNombre.value = '';
+  if (elFecha) elFecha.value = getFechaLocalActual();
+  if (elHoraEntrada) elHoraEntrada.value = getHoraLocalActual();
+  if (elHoraSalida) elHoraSalida.value = '';
+  if (elEstado) elEstado.value = 'Presente';
+  if (elErrorNombre) elErrorNombre.classList.remove('visible');
+  if (elNombre) elNombre.focus();
 }
 
 // ==========================================================================
@@ -355,6 +494,11 @@ window.eliminarRegistro = function(id) {
     guardarEnStorage();
     renderTabla();
     mostrarToast(`🗑️ Registro de "${alumnoNombre}" eliminado`);
+
+    const client = obtenerClienteSupabase();
+    if (client && supabaseDisponible) {
+      client.from('asistencias').delete().eq('id', id).then(() => {}).catch(() => {});
+    }
   }
 };
 
@@ -370,6 +514,11 @@ function borrarTodosLosRegistros() {
     guardarEnStorage();
     renderTabla();
     mostrarToast('🧸 Se han eliminado todos los registros');
+
+    const client = obtenerClienteSupabase();
+    if (client && supabaseDisponible) {
+      client.from('asistencias').delete().neq('id', '0').then(() => {}).catch(() => {});
+    }
   }
 }
 
@@ -434,48 +583,88 @@ function cargarDatosDemo() {
 }
 
 // ==========================================================================
-// Inicialización
+// Inicialización Segura
 // ==========================================================================
 
 function inicializarApp() {
+  console.log('🌸 Inicializando Sistema de Control de Asistencia...');
+
+  formAsistencia = document.getElementById('formAsistencia');
+  btnGuardar = document.getElementById('btnGuardar');
+  inputNombre = document.getElementById('inputNombre');
+  inputFecha = document.getElementById('inputFecha');
+  inputHoraEntrada = document.getElementById('inputHoraEntrada');
+  inputHoraSalida = document.getElementById('inputHoraSalida');
+  selectEstado = document.getElementById('selectEstado');
+  errorNombre = document.getElementById('errorNombre');
+  btnLimpiar = document.getElementById('btnLimpiar');
+
+  tbodyAsistencia = document.getElementById('tbodyAsistencia');
+  emptyState = document.getElementById('emptyState');
+  conteoRegistros = document.getElementById('conteoRegistros');
+  currentDateDisplay = document.getElementById('currentDateDisplay');
+  syncStatusBadge = document.getElementById('syncStatusBadge');
+
+  filtroNombre = document.getElementById('filtroNombre');
+  filtroEstado = document.getElementById('filtroEstado');
+  filtroFecha = document.getElementById('filtroFecha');
+
+  cardTotalHoy = document.getElementById('cardTotalHoy');
+  cardSubtextHoy = document.getElementById('cardSubtextHoy');
+  statPresentesHoy = document.getElementById('statPresentesHoy');
+  statRetardosHoy = document.getElementById('statRetardosHoy');
+  statFaltasHoy = document.getElementById('statFaltasHoy');
+
+  btnCargarDemo = document.getElementById('btnCargarDemo');
+  btnBorrarTodo = document.getElementById('btnBorrarTodo');
+  toastNotification = document.getElementById('toastNotification');
+  toastMessage = document.getElementById('toastMessage');
+
   const hoy = getFechaLocalActual();
   const hora = getHoraLocalActual();
 
-  inputFecha.value = hoy;
-  inputHoraEntrada.value = hora;
+  if (inputFecha) inputFecha.value = hoy;
+  if (inputHoraEntrada) inputHoraEntrada.value = hora;
 
-  // Mostrar fecha en encabezado con estilo amigable
-  const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-  const fechaTexto = new Date().toLocaleDateString('es-ES', opcionesFecha);
-  currentDateDisplay.textContent = fechaTexto.charAt(0).toUpperCase() + fechaTexto.slice(1);
-
-  // Cargar datos
-  cargarDeStorage();
-
-  // Si está vacío al inicio, cargar ejemplos
-  if (registros.length === 0) {
-    cargarDatosDemo();
-  } else {
-    renderTabla();
+  if (currentDateDisplay) {
+    const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const fechaTexto = new Date().toLocaleDateString('es-ES', opcionesFecha);
+    currentDateDisplay.textContent = fechaTexto.charAt(0).toUpperCase() + fechaTexto.slice(1);
   }
 
-  // Event Listeners
-  formAsistencia.addEventListener('submit', registrarAsistencia);
-  btnLimpiar.addEventListener('click', resetFormulario);
+  if (formAsistencia) {
+    formAsistencia.addEventListener('submit', registrarAsistencia);
+  }
 
-  filtroNombre.addEventListener('input', renderTabla);
-  filtroEstado.addEventListener('change', renderTabla);
-  filtroFecha.addEventListener('change', renderTabla);
+  if (btnGuardar) {
+    btnGuardar.addEventListener('click', registrarAsistencia);
+    console.log('✅ Event listener asignado directamente a btnGuardar');
+  }
 
-  btnCargarDemo.addEventListener('click', cargarDatosDemo);
-  btnBorrarTodo.addEventListener('click', borrarTodosLosRegistros);
+  if (btnLimpiar) {
+    btnLimpiar.addEventListener('click', resetFormulario);
+  }
 
-  inputNombre.addEventListener('input', () => {
-    if (inputNombre.value.trim().length > 0) {
-      errorNombre.classList.remove('visible');
-    }
-  });
+  if (filtroNombre) filtroNombre.addEventListener('input', renderTabla);
+  if (filtroEstado) filtroEstado.addEventListener('change', renderTabla);
+  if (filtroFecha) filtroFecha.addEventListener('change', renderTabla);
+
+  if (btnCargarDemo) btnCargarDemo.addEventListener('click', cargarDatosDemo);
+  if (btnBorrarTodo) btnBorrarTodo.addEventListener('click', borrarTodosLosRegistros);
+
+  if (inputNombre) {
+    inputNombre.addEventListener('input', () => {
+      if (errorNombre && inputNombre.value.trim().length > 0) {
+        errorNombre.classList.remove('visible');
+      }
+    });
+  }
+
+  cargarDeStorage();
 }
 
-// Iniciar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', inicializarApp);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', inicializarApp);
+} else {
+  inicializarApp();
+}

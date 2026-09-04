@@ -167,6 +167,36 @@ body {
   color: var(--pastel-pink-dark);
 }
 
+.header-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.sync-badge {
+  font-size: 0.775rem;
+  font-weight: 700;
+  padding: 0.5rem 0.95rem;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, #fff0f7 0%, #fdf2f8 100%);
+  color: #9d174d;
+  border: 1.5px solid #fbcfe8;
+  box-shadow: 0 2px 6px rgba(244, 114, 182, 0.08);
+  transition: var(--transition-smooth);
+  cursor: default;
+}
+
+.sync-badge.synced {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  color: #065f46;
+  border-color: #a7f3d0;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.1);
+}
+
 /* ==========================================================================
    Dashboard de Estadísticas (Colores Pastel Suaves)
    ========================================================================== */

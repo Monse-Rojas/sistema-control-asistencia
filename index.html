@@ -23,9 +23,12 @@
           <p class="subtitle">Monitoreo diario y registro de alumnos con amor y orden ✏️✨</p>
         </div>
       </div>
-      <div class="header-date">
-        <span class="date-label">📅 Hoy es:</span>
-        <span id="currentDateDisplay" class="date-badge">--/--/----</span>
+      <div class="header-badges">
+        <div class="header-date">
+          <span class="date-label">📅 Hoy es:</span>
+          <span id="currentDateDisplay" class="date-badge">--/--/----</span>
+        </div>
+        <span id="syncStatusBadge" class="sync-badge" title="Estado de la sincronización">💾 Modo Local Seguro</span>
       </div>
     </header>
 
@@ -223,6 +226,8 @@
 
   </div>
 
+  <!-- Librería oficial de Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>
