@@ -73,7 +73,6 @@
 body {
   font-family: var(--font-family);
   background-color: var(--bg-page);
-  /* Degradados sutiles pastel de fondo para un ambiente soñado y acogedor */
   background-image: 
     radial-gradient(circle at 10% 15%, rgba(253, 242, 248, 0.9) 0%, transparent 40%),
     radial-gradient(circle at 90% 10%, rgba(240, 253, 244, 0.8) 0%, transparent 35%),
@@ -94,9 +93,7 @@ body {
   gap: 1.5rem;
 }
 
-/* ==========================================================================
-   Encabezado Coqueto
-   ========================================================================== */
+/* Encabezado */
 .app-header {
   background: var(--bg-card);
   padding: 1.25rem 2rem;
@@ -197,9 +194,7 @@ body {
   box-shadow: 0 2px 6px rgba(16, 185, 129, 0.1);
 }
 
-/* ==========================================================================
-   Dashboard de Estadísticas (Colores Pastel Suaves)
-   ========================================================================== */
+/* Dashboard de Estadísticas */
 .dashboard-stats {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
@@ -225,7 +220,6 @@ body {
   box-shadow: var(--shadow-hover);
 }
 
-/* Tarjeta Principal: Requisito #3 ("Hoy llegaron X alumnos") */
 .stat-card-main {
   background: linear-gradient(135deg, #fff0f7 0%, #fbf4ff 50%, #eff8ff 100%);
   border: 2px solid #fbcfe8;
@@ -271,7 +265,6 @@ body {
   font-weight: 500;
 }
 
-/* Tarjetas secundarias en tonos pastel */
 .stat-card-presente {
   background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
   border-color: var(--pastel-mint);
@@ -333,14 +326,11 @@ body {
   border: 1.5px solid #fecdd3;
 }
 
-/* ==========================================================================
-   Layout Principal: Formulario y Tabla
-   ========================================================================== */
+/* Layout Principal */
 .main-content {
-  display: grid;
-  grid-template-columns: 370px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
-  align-items: start;
 }
 
 .card {
@@ -383,114 +373,172 @@ body {
 }
 
 /* ==========================================================================
-   Formulario de Registro (Suave y Redondeado)
+   Pase de Lista Rápido del Grupo (Lista Fija + Desplegables)
    ========================================================================== */
-.attendance-form {
-  padding: 1.65rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.form-group label {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #423550;
-}
-
-.required {
-  color: var(--pastel-pink-accent);
-}
-
-.optional {
-  font-size: 0.775rem;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.input-with-icon {
-  position: relative;
+.group-actions-bar {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.input-icon {
-  position: absolute;
-  left: 0.95rem;
-  font-size: 1rem;
-  pointer-events: none;
+.date-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #faf5fa;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  border: 1.5px solid #f1dbe9;
 }
 
-.input-with-icon input {
-  padding-left: 2.75rem !important;
+.date-input-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #634768;
 }
 
-/* Campos de entrada ultra suaves */
-input[type="text"],
-input[type="date"],
-input[type="time"],
-select {
-  width: 100%;
-  padding: 0.75rem 1.1rem;
-  font-size: 0.925rem;
+.input-date-small {
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 700;
   font-family: inherit;
   color: var(--text-main);
-  background-color: #faf8fb;
-  border: 1.5px solid #ecdbe5;
-  border-radius: var(--radius-md);
   outline: none;
-  transition: var(--transition-smooth);
+  cursor: pointer;
 }
 
-input[type="text"]:hover,
-input[type="date"]:hover,
-input[type="time"]:hover,
-select:hover {
-  border-color: #f472b6;
-  background-color: #ffffff;
+.students-list-wrapper {
+  padding: 1.5rem;
+  background-color: #fdfbfd;
 }
 
-input[type="text"]:focus,
-input[type="date"]:focus,
-input[type="time"]:focus,
-select:focus {
-  background-color: #ffffff;
-  border-color: var(--pastel-pink-accent);
-  box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.2);
-}
-
-.form-row {
+.students-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 0.95rem;
 }
 
-.select-wrapper {
-  position: relative;
-}
-
-.form-error {
-  font-size: 0.8rem;
-  color: #e11d48;
-  display: none;
-  margin-top: 0.2rem;
-  font-weight: 600;
-}
-
-.form-error.visible {
-  display: block;
-}
-
-.form-actions {
+.student-row {
+  background: #ffffff;
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.15rem;
   display: flex;
-  gap: 0.85rem;
-  margin-top: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: var(--transition-smooth);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.student-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(244, 114, 182, 0.12);
+}
+
+.student-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.student-num {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  width: 22px;
+  flex-shrink: 0;
+}
+
+.student-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+
+.student-name {
+  font-weight: 700;
+  color: #382945;
+  font-size: 0.925rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-status {
+  flex-shrink: 0;
+}
+
+/* Selectores de Estado Estilizados */
+.select-estado-alumno {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  appearance: auto;
+  border: 1.5px solid transparent;
+}
+
+.status-select-presente {
+  background-color: var(--color-presente-bg);
+  color: var(--color-presente-text);
+  border-color: var(--color-presente-border);
+}
+
+.status-select-retardo {
+  background-color: var(--color-retardo-bg);
+  color: var(--color-retardo-text);
+  border-color: var(--color-retardo-border);
+}
+
+.status-select-falta {
+  background-color: var(--color-falta-bg);
+  color: var(--color-falta-text);
+  border-color: var(--color-falta-border);
+}
+
+.status-presente-row {
+  border-left: 4px solid var(--pastel-mint-dark);
+}
+
+.status-retardo-row {
+  border-left: 4px solid var(--pastel-peach-dark);
+}
+
+.status-falta-row {
+  border-left: 4px solid var(--pastel-pink-dark);
+}
+
+.group-footer-actions {
+  padding: 1.35rem 1.65rem;
+  background: linear-gradient(180deg, #ffffff 0%, #fff7fb 100%);
+  border-top: 1.5px solid var(--border-soft);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-lg {
+  padding: 1rem 1.8rem;
+  font-size: 1.05rem;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
 }
 
 /* Botones Pastel Coquetos */
@@ -513,7 +561,6 @@ select:focus {
 .btn-primary {
   background: linear-gradient(135deg, #f472b6 0%, #fb7185 100%);
   color: #ffffff;
-  flex: 1;
   box-shadow: var(--shadow-button);
 }
 
@@ -525,17 +572,6 @@ select:focus {
 
 .btn-primary:active {
   transform: translateY(0);
-}
-
-.btn-secondary {
-  background-color: var(--pastel-lavender-soft);
-  color: var(--pastel-lavender-dark);
-  border: 1.5px solid var(--pastel-lavender);
-}
-
-.btn-secondary:hover {
-  background-color: #ede9fe;
-  transform: translateY(-2px);
 }
 
 .btn-outline-sm {
@@ -593,9 +629,7 @@ select:focus {
   transform: scale(1.1);
 }
 
-/* ==========================================================================
-   Tabla de Asistencias con Filas Pastel Alternadas
-   ========================================================================== */
+/* Tabla de Historial */
 .table-header-flex {
   display: flex;
   justify-content: space-between;
@@ -636,11 +670,20 @@ select:focus {
 }
 
 .search-box input {
-  padding-left: 2.6rem;
+  width: 100%;
+  padding: 0.6rem 1.1rem 0.6rem 2.6rem;
   font-size: 0.875rem;
-  padding-top: 0.6rem;
-  padding-bottom: 0.6rem;
+  font-family: inherit;
+  border: 1.5px solid #ecdbe5;
   border-radius: var(--radius-full);
+  outline: none;
+  background-color: #ffffff;
+  transition: var(--transition-smooth);
+}
+
+.search-box input:focus {
+  border-color: var(--pastel-pink-accent);
+  box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.2);
 }
 
 .filters-group {
@@ -654,12 +697,14 @@ select:focus {
   padding: 0.55rem 0.95rem;
   min-width: 145px;
   background-color: #ffffff;
+  border: 1.5px solid #ecdbe5;
   border-radius: var(--radius-full);
+  outline: none;
 }
 
 .table-responsive {
   overflow-x: auto;
-  min-height: 270px;
+  min-height: 220px;
 }
 
 .attendance-table {
@@ -689,7 +734,6 @@ select:focus {
   vertical-align: middle;
 }
 
-/* Filas alternadas en tonos pastel muy suaves: Requisito #4 */
 .attendance-table tbody tr:nth-child(even) {
   background-color: #fdfafc;
 }
@@ -698,47 +742,10 @@ select:focus {
   background-color: #ffffff;
 }
 
-.attendance-table tbody tr {
-  transition: background-color 0.2s ease;
-}
-
 .attendance-table tbody tr:hover {
   background-color: #f5f0ff !important;
 }
 
-.student-name {
-  font-weight: 700;
-  color: #3b2d4a;
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.student-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.775rem;
-  font-weight: 800;
-  flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-
-.time-text {
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #554865;
-  background: #fdf5f9;
-  padding: 0.25rem 0.6rem;
-  border-radius: var(--radius-sm);
-  display: inline-block;
-}
-
-/* Badges / Pastillas de Estado Pastel */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -747,7 +754,6 @@ select:focus {
   border-radius: var(--radius-full);
   font-size: 0.8rem;
   font-weight: 700;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
 }
 
 .badge-Presente {
@@ -768,11 +774,21 @@ select:focus {
   border: 1.5px solid #fecdd3;
 }
 
+.time-text {
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #554865;
+  background: #fdf5f9;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
 .text-center {
   text-align: center;
 }
 
-/* Estado Vacío Tierno */
 .empty-state {
   text-align: center;
   padding: 3.5rem 1.5rem;
@@ -809,7 +825,6 @@ select:focus {
   display: none !important;
 }
 
-/* Pie de Tabla */
 .table-footer {
   padding: 0.95rem 1.65rem;
   background-color: #fff9fc;
@@ -819,9 +834,7 @@ select:focus {
   font-weight: 600;
 }
 
-/* ==========================================================================
-   Notificación Toast Coqueta
-   ========================================================================== */
+/* Notificación Toast */
 .toast {
   position: fixed;
   bottom: 26px;
@@ -856,9 +869,7 @@ select:focus {
   }
 }
 
-/* ==========================================================================
-   Diseño Responsivo (Mobile & Tablets)
-   ========================================================================== */
+/* Responsive */
 @media (max-width: 1024px) {
   .dashboard-stats {
     grid-template-columns: 1fr 1fr;
@@ -867,8 +878,8 @@ select:focus {
   .stat-card-main {
     grid-column: span 2;
   }
-
-  .main-content {
+  
+  .students-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -905,7 +916,17 @@ select:focus {
     width: 100%;
   }
 
-  .form-row {
-    grid-template-columns: 1fr;
+  .student-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+
+  .student-status {
+    width: 100%;
+  }
+
+  .select-estado-alumno {
+    width: 100%;
   }
 }

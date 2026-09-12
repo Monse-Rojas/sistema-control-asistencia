@@ -10,7 +10,7 @@
 const SUPABASE_URL = 'https://pvunuzruywavlyxrxibt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dW51enJ1eXdhdmx5eHJ4aWJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0ODI4ODcsImV4cCI6MjEwNDA1ODg4N30.GrB9OSA55UebDMRMUnL936nCeQGB3IC9VZxwWHG36k0';
 
-// Cliente de Supabase (usamos 'supabaseClient' para no colisionar con la variable global 'supabase' de la librería)
+// Cliente de Supabase
 let supabaseClient = null;
 
 function obtenerClienteSupabase() {
@@ -24,19 +24,32 @@ function obtenerClienteSupabase() {
   return supabaseClient;
 }
 
-// Intentar inicialización inmediata
+// Inicialización inmediata
 obtenerClienteSupabase();
 
-// Bandera para verificar si la tabla 'asistencias' está disponible en Supabase
+// Lista oficial del grupo
+const LISTA_ALUMNOS = [
+  "Jefte Emaus Cervera Olmedo",
+  "Paola Alexandra Contreras Sanchez",
+  "Jose Luis Falcon Hernandez",
+  "Mariana Iveth Garcia Lopez",
+  "Manuel Esteban Garcia Rosendo",
+  "Ali Emmanuel Gomez del Rivero",
+  "Jesus Manuel Gomez Hernandez",
+  "Ginger Dalay Hernandez Arias",
+  "Adolfo Gabriel Kantun Chan",
+  "Samir Avimael Malerva Canepa",
+  "Kevin Alexander Mendez Cruz",
+  "Elian Joseph Pech Laines",
+  "Edwin Adalberto Quetz Alvarez",
+  "Estefania Monserrat Rojas Zamudio",
+  "Canek Abisaid Santiago Sequera"
+];
+
+// Estado de Supabase y aplicación
 let supabaseDisponible = false;
-
-// Evitar doble registro simultáneo por clic y submit
-let procesandoRegistro = false;
-
-// Clave para almacenamiento en LocalStorage (respaldo y modo offline permanente)
+let procesandoGuardado = false;
 const STORAGE_KEY = 'asistencia_escolar_alumnos_v1';
-
-// Estado de la aplicación
 let registros = [];
 
 // Paleta pastel para avatares tiernos de alumnos
@@ -48,16 +61,12 @@ const PASTEL_AVATAR_PALETTE = [
   { bg: '#fef3c7', text: '#92400e' }  // Melocotón pastel
 ];
 
-// Elementos del DOM (se resuelven de forma segura en inicializarApp)
-let formAsistencia = null;
-let btnGuardar = null;
-let inputNombre = null;
-let inputFecha = null;
-let inputHoraEntrada = null;
-let inputHoraSalida = null;
-let selectEstado = null;
-let errorNombre = null;
-let btnLimpiar = null;
+// Elementos del DOM
+let contenedorListaAlumnos = null;
+let inputFechaGrupo = null;
+let btnGuardarAsistenciaDia = null;
+let btnMarcarPresentes = null;
+let btnMarcarFaltas = null;
 
 let tbodyAsistencia = null;
 let emptyState = null;
@@ -75,7 +84,6 @@ let statPresentesHoy = null;
 let statRetardosHoy = null;
 let statFaltasHoy = null;
 
-let btnCargarDemo = null;
 let btnBorrarTodo = null;
 let toastNotification = null;
 let toastMessage = null;
@@ -118,6 +126,14 @@ function formatearHora(horaStr) {
   return `${h12}:${m} ${ampm}`;
 }
 
+function obtenerIniciales(nombreCompleto) {
+  if (!nombreCompleto) return 'AL';
+  const partes = nombreCompleto.trim().split(/\s+/);
+  if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
+  if (partes.length === 2) return (partes[0][0] + partes[1][0]).toUpperCase();
+  return (partes[0][0] + partes[2][0]).toUpperCase();
+}
+
 function getAvatarStyle(nombre) {
   const str = String(nombre || 'Alumno');
   let hash = 0;
@@ -142,7 +158,7 @@ function mostrarToast(mensaje) {
   toastNotification.classList.remove('hidden');
   toastTimeout = setTimeout(() => {
     toastNotification.classList.add('hidden');
-  }, 3500);
+  }, 3800);
 }
 
 function actualizarBadgeEstado(conectado) {
@@ -173,27 +189,23 @@ function guardarEnStorage() {
 async function verificarConexionSupabase() {
   const client = obtenerClienteSupabase();
   if (!client) {
-    console.info('ℹ️ Supabase JS SDK cargando o no disponible, operando en modo local.');
     actualizarBadgeEstado(false);
     return false;
   }
 
   try {
     const { data, error } = await client.from('asistencias').select('id').limit(1);
-
     if (!error) {
       supabaseDisponible = true;
       actualizarBadgeEstado(true);
-      console.log('🌸 [Supabase]: Conexión exitosa y tabla "asistencias" operativa.');
+      console.log('🌸 [Supabase]: Conexión exitosa y tabla "asistencias" lista.');
       return true;
     } else {
       supabaseDisponible = false;
       actualizarBadgeEstado(false);
-      console.info('ℹ️ [Supabase Info]:', error.message);
       return false;
     }
   } catch (err) {
-    console.warn('ℹ️ [Supabase Catch]:', err);
     supabaseDisponible = false;
     actualizarBadgeEstado(false);
     return false;
@@ -201,7 +213,6 @@ async function verificarConexionSupabase() {
 }
 
 async function cargarDeStorage() {
-  // 1. Carga inmediata de LocalStorage para visualización sin retraso
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (data) {
@@ -216,7 +227,6 @@ async function cargarDeStorage() {
 
   renderTabla();
 
-  // 2. Verificar disponibilidad de Supabase y sincronizar si hay datos en la nube
   const ok = await verificarConexionSupabase();
   if (ok) {
     const client = obtenerClienteSupabase();
@@ -228,7 +238,6 @@ async function cargarDeStorage() {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          console.log(`☁️ ${data.length} registro(s) sincronizados desde Supabase.`);
           registros = data.map(item => ({
             id: item.id || ('asist_' + Date.now()),
             nombre: item.nombre || 'Sin nombre',
@@ -240,20 +249,158 @@ async function cargarDeStorage() {
           }));
           guardarEnStorage();
           renderTabla();
-        } else if (registros.length === 0) {
-          cargarDatosDemo();
         }
       } catch (err) {
-        console.info('Aviso al sincronizar registros de Supabase:', err);
+        console.info('Aviso al sincronizar de Supabase:', err);
       }
     }
-  } else if (registros.length === 0) {
-    cargarDatosDemo();
   }
 }
 
 // ==========================================================================
-// Cálculo de Estadísticas del Día (Requisito #3)
+// Renderizado de la Lista Fija del Grupo (Pase de Lista Rápido)
+// ==========================================================================
+
+function renderListaGrupo() {
+  if (!contenedorListaAlumnos) return;
+  contenedorListaAlumnos.innerHTML = '';
+
+  LISTA_ALUMNOS.forEach((nombre, index) => {
+    const iniciales = obtenerIniciales(nombre);
+    const avatarStyle = getAvatarStyle(nombre);
+
+    const studentCard = document.createElement('div');
+    studentCard.className = 'student-row status-presente-row';
+    studentCard.id = `student_row_${index}`;
+
+    studentCard.innerHTML = `
+      <div class="student-info">
+        <span class="student-num">${index + 1}</span>
+        <span class="student-avatar" style="${avatarStyle}">${escapeHtml(iniciales)}</span>
+        <span class="student-name">${escapeHtml(nombre)}</span>
+      </div>
+      <div class="student-status">
+        <select class="select-estado-alumno status-select-presente" data-index="${index}" id="select_estado_${index}">
+          <option value="Presente" selected>✨ Presente</option>
+          <option value="Retardo">⏳ Retardo</option>
+          <option value="Falta">💤 Falta</option>
+        </select>
+      </div>
+    `;
+
+    contenedorListaAlumnos.appendChild(studentCard);
+
+    // Event listener para cambiar el estilo visual según la opción
+    const selectEl = studentCard.querySelector('select');
+    if (selectEl) {
+      selectEl.addEventListener('change', (e) => actualizarEstiloSelector(e.target, studentCard));
+    }
+  });
+}
+
+function actualizarEstiloSelector(selectEl, rowEl) {
+  const val = selectEl.value;
+  selectEl.className = `select-estado-alumno status-select-${val.toLowerCase()}`;
+  if (rowEl) {
+    rowEl.className = `student-row status-${val.toLowerCase()}-row`;
+  }
+}
+
+function marcarTodosComo(estado) {
+  LISTA_ALUMNOS.forEach((_, index) => {
+    const selectEl = document.getElementById(`select_estado_${index}`);
+    const rowEl = document.getElementById(`student_row_${index}`);
+    if (selectEl) {
+      selectEl.value = estado;
+      actualizarEstiloSelector(selectEl, rowEl);
+    }
+  });
+  mostrarToast(`✨ Todos los alumnos marcados como ${estado}`);
+}
+
+// ==========================================================================
+// Guardar Asistencia del Día a Supabase
+// ==========================================================================
+
+async function guardarAsistenciaDelDia() {
+  if (procesandoGuardado) return;
+  procesandoGuardado = true;
+
+  if (btnGuardarAsistenciaDia) {
+    btnGuardarAsistenciaDia.disabled = true;
+    btnGuardarAsistenciaDia.innerHTML = '⏳ Guardando en Supabase...';
+  }
+
+  const fecha = inputFechaGrupo && inputFechaGrupo.value ? inputFechaGrupo.value : getFechaLocalActual();
+  const hora = getHoraLocalActual();
+  const nowIso = new Date().toISOString();
+
+  const nuevosRegistros = [];
+  const filasSupabase = [];
+
+  LISTA_ALUMNOS.forEach((nombre, index) => {
+    const selectEl = document.getElementById(`select_estado_${index}`);
+    const estado = selectEl ? selectEl.value : 'Presente';
+    const idUnico = 'asist_' + Date.now() + '_' + index + '_' + Math.random().toString(36).substring(2, 6);
+
+    const reg = {
+      id: idUnico,
+      nombre: nombre,
+      fecha: fecha,
+      horaEntrada: hora,
+      horaSalida: '',
+      estado: estado,
+      creadoEn: nowIso
+    };
+
+    nuevosRegistros.push(reg);
+    filasSupabase.push({
+      id: idUnico,
+      nombre: nombre,
+      fecha: fecha,
+      hora_entrada: hora,
+      hora_salida: null,
+      estado: estado,
+      created_at: nowIso
+    });
+  });
+
+  // 1. Guardado inmediato local
+  registros.unshift(...nuevosRegistros);
+  guardarEnStorage();
+  renderTabla();
+
+  // 2. Bulk insert en Supabase
+  const client = obtenerClienteSupabase();
+  if (client && supabaseDisponible) {
+    try {
+      const { data, error } = await client.from('asistencias').insert(filasSupabase);
+      if (error) {
+        console.error('❌ Error enviando lista a Supabase:', error.message);
+        mostrarToast(`💾 Guardado localmente. (Error Supabase: ${error.message})`);
+      } else {
+        console.log('☁️ ¡Asistencia masiva guardada exitosamente en Supabase!');
+        mostrarToast('✨ ¡Asistencia del día guardada exitosamente en Supabase!');
+      }
+    } catch (err) {
+      console.error('❌ Error de red Supabase:', err);
+      mostrarToast('💾 Guardado en LocalStorage');
+    }
+  } else {
+    mostrarToast('✨ ¡Asistencia del día guardada localmente!');
+  }
+
+  setTimeout(() => {
+    procesandoGuardado = false;
+    if (btnGuardarAsistenciaDia) {
+      btnGuardarAsistenciaDia.disabled = false;
+      btnGuardarAsistenciaDia.innerHTML = '💖 Guardar Asistencia del Día';
+    }
+  }, 600);
+}
+
+// ==========================================================================
+// Estadísticas del Día
 // ==========================================================================
 
 function actualizarEstadisticas() {
@@ -288,7 +435,7 @@ function actualizarEstadisticas() {
 }
 
 // ==========================================================================
-// Renderizado de la Tabla (Requisito #2)
+// Tabla de Historial
 // ==========================================================================
 
 function renderTabla() {
@@ -319,13 +466,7 @@ function renderTabla() {
       const tr = document.createElement('tr');
 
       const nombreLimpio = String(item.nombre || 'Alumno');
-      const iniciales = nombreLimpio
-        .split(' ')
-        .filter(n => n.length > 0)
-        .slice(0, 2)
-        .map(n => n[0].toUpperCase())
-        .join('');
-
+      const iniciales = obtenerIniciales(nombreLimpio);
       const avatarStyle = getAvatarStyle(nombreLimpio);
 
       let emojiEstado = '✨';
@@ -336,13 +477,12 @@ function renderTabla() {
         <td style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700;">${index + 1}</td>
         <td>
           <div class="student-name">
-            <span class="student-avatar" style="${avatarStyle}">${escapeHtml(iniciales || 'A')}</span>
+            <span class="student-avatar" style="${avatarStyle}">${escapeHtml(iniciales)}</span>
             <span>${escapeHtml(nombreLimpio)}</span>
           </div>
         </td>
         <td><span style="font-weight: 600; color: #574b66;">${formatearFecha(item.fecha)}</span></td>
         <td><span class="time-text">${formatearHora(item.horaEntrada)}</span></td>
-        <td><span class="time-text">${formatearHora(item.horaSalida)}</span></td>
         <td>
           <span class="badge badge-${escapeHtml(item.estado || 'Presente')}">
             <span>${emojiEstado}</span>
@@ -366,125 +506,11 @@ function renderTabla() {
   }
 
   if (conteoRegistros) {
-    conteoRegistros.textContent = `Mostrando ${registrosFiltrados.length} de ${registros.length} registro(s) en total ✨`;
+    conteoRegistros.textContent = `Mostrando ${registrosFiltrados.length} de ${registros.length} registro(s) guardado(s) ✨`;
   }
-  
+
   actualizarEstadisticas();
 }
-
-// ==========================================================================
-// Manejo del Formulario (Requisito #1)
-// ==========================================================================
-
-function registrarAsistencia(e) {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  if (procesandoRegistro) return;
-  procesandoRegistro = true;
-  setTimeout(() => { procesandoRegistro = false; }, 400);
-
-  console.log('🌸 [Evento Guardar]: Leyendo datos del formulario...');
-
-  const elNombre = document.getElementById('inputNombre');
-  const elFecha = document.getElementById('inputFecha');
-  const elHoraEntrada = document.getElementById('inputHoraEntrada');
-  const elHoraSalida = document.getElementById('inputHoraSalida');
-  const elEstado = document.getElementById('selectEstado');
-  const elErrorNombre = document.getElementById('errorNombre');
-
-  const nombre = elNombre ? elNombre.value.trim() : '';
-  const fecha = (elFecha && elFecha.value) ? elFecha.value : getFechaLocalActual();
-  const horaEntrada = (elHoraEntrada && elHoraEntrada.value) ? elHoraEntrada.value : getHoraLocalActual();
-  const horaSalida = elHoraSalida ? elHoraSalida.value.trim() : '';
-  const estado = elEstado ? elEstado.value : 'Presente';
-
-  if (!nombre) {
-    console.warn('⚠️ Validación: El nombre del alumno está vacío.');
-    if (elErrorNombre) elErrorNombre.classList.add('visible');
-    if (elNombre) elNombre.focus();
-    mostrarToast('⚠️ Por favor ingresa el nombre del alumno');
-    return;
-  }
-  if (elErrorNombre) elErrorNombre.classList.remove('visible');
-
-  const nuevoRegistro = {
-    id: 'asist_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-    nombre: nombre,
-    fecha: fecha,
-    horaEntrada: horaEntrada,
-    horaSalida: horaSalida || '',
-    estado: estado,
-    creadoEn: new Date().toISOString()
-  };
-
-  console.log('📝 Datos listos para guardar:', nuevoRegistro);
-
-  // 1. Guardar de inmediato en memoria y LocalStorage
-  registros.unshift(nuevoRegistro);
-  guardarEnStorage();
-  renderTabla();
-
-  // 2. Si Supabase está conectado, guardar en la nube
-  const client = obtenerClienteSupabase();
-  if (client && supabaseDisponible) {
-    console.log('☁️ Enviando registro a Supabase (asistencias)...');
-    client
-      .from('asistencias')
-      .insert([{
-        id: nuevoRegistro.id,
-        nombre: nuevoRegistro.nombre,
-        fecha: nuevoRegistro.fecha,
-        hora_entrada: nuevoRegistro.horaEntrada,
-        hora_salida: nuevoRegistro.horaSalida || null,
-        estado: nuevoRegistro.estado,
-        created_at: nuevoRegistro.creadoEn
-      }])
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('❌ Error Supabase al guardar:', error.message);
-          mostrarToast(`💾 Guardado localmente. (Supabase aviso: ${error.message})`);
-        } else {
-          console.log('☁️ ¡Guardado exitoso en Supabase!');
-        }
-      })
-      .catch(err => {
-        console.error('❌ Error de red Supabase:', err);
-      });
-  }
-
-  // 3. Resetear formulario conservando fecha y hora para agilidad
-  if (elNombre) elNombre.value = '';
-  if (elHoraSalida) elHoraSalida.value = '';
-  if (elEstado) elEstado.value = 'Presente';
-  if (elHoraEntrada) elHoraEntrada.value = getHoraLocalActual();
-  if (elNombre) elNombre.focus();
-
-  mostrarToast(`✨ ¡Asistencia de "${nuevoRegistro.nombre}" guardada con éxito!`);
-}
-
-function resetFormulario() {
-  const elNombre = document.getElementById('inputNombre');
-  const elFecha = document.getElementById('inputFecha');
-  const elHoraEntrada = document.getElementById('inputHoraEntrada');
-  const elHoraSalida = document.getElementById('inputHoraSalida');
-  const elEstado = document.getElementById('selectEstado');
-  const elErrorNombre = document.getElementById('errorNombre');
-
-  if (elNombre) elNombre.value = '';
-  if (elFecha) elFecha.value = getFechaLocalActual();
-  if (elHoraEntrada) elHoraEntrada.value = getHoraLocalActual();
-  if (elHoraSalida) elHoraSalida.value = '';
-  if (elEstado) elEstado.value = 'Presente';
-  if (elErrorNombre) elErrorNombre.classList.remove('visible');
-  if (elNombre) elNombre.focus();
-}
-
-// ==========================================================================
-// Acciones de Registros (Eliminar, Limpiar, Cargar Demo)
-// ==========================================================================
 
 window.eliminarRegistro = function(id) {
   const index = registros.findIndex(r => r.id === id);
@@ -508,12 +534,12 @@ function borrarTodosLosRegistros() {
     return;
   }
 
-  const confirmar = window.confirm('¿Deseas vaciar la lista de asistencias por completo? Esta acción no se puede deshacer.');
+  const confirmar = window.confirm('¿Deseas vaciar la lista de asistencias guardadas? Esta acción no se puede deshacer.');
   if (confirmar) {
     registros = [];
     guardarEnStorage();
     renderTabla();
-    mostrarToast('🧸 Se han eliminado todos los registros');
+    mostrarToast('🧸 Se han eliminado todos los registros guardados');
 
     const client = obtenerClienteSupabase();
     if (client && supabaseDisponible) {
@@ -522,82 +548,18 @@ function borrarTodosLosRegistros() {
   }
 }
 
-function cargarDatosDemo() {
-  const hoyStr = getFechaLocalActual();
-
-  const ejemplos = [
-    {
-      id: 'demo_1',
-      nombre: 'Sofía Valenzuela Martínez',
-      fecha: hoyStr,
-      horaEntrada: '07:55',
-      horaSalida: '14:00',
-      estado: 'Presente'
-    },
-    {
-      id: 'demo_2',
-      nombre: 'Mateo Alejandro Morales',
-      fecha: hoyStr,
-      horaEntrada: '08:00',
-      horaSalida: '',
-      estado: 'Presente'
-    },
-    {
-      id: 'demo_3',
-      nombre: 'Camila Isabella Gómez',
-      fecha: hoyStr,
-      horaEntrada: '08:15',
-      horaSalida: '',
-      estado: 'Retardo'
-    },
-    {
-      id: 'demo_4',
-      nombre: 'Diego Fernando Ramírez',
-      fecha: hoyStr,
-      horaEntrada: '08:20',
-      horaSalida: '',
-      estado: 'Retardo'
-    },
-    {
-      id: 'demo_5',
-      nombre: 'Valentina Castillo Peña',
-      fecha: hoyStr,
-      horaEntrada: '',
-      horaSalida: '',
-      estado: 'Falta'
-    },
-    {
-      id: 'demo_6',
-      nombre: 'Santiago Javier Herrera',
-      fecha: hoyStr,
-      horaEntrada: '07:50',
-      horaSalida: '14:05',
-      estado: 'Presente'
-    }
-  ];
-
-  registros = [...ejemplos, ...registros];
-  guardarEnStorage();
-  renderTabla();
-  mostrarToast('🌷 ¡Ejemplos cargados correctamente!');
-}
-
 // ==========================================================================
-// Inicialización Segura
+// Inicialización
 // ==========================================================================
 
 function inicializarApp() {
-  console.log('🌸 Inicializando Sistema de Control de Asistencia...');
+  console.log('🌸 Inicializando Sistema de Control de Asistencia del Grupo...');
 
-  formAsistencia = document.getElementById('formAsistencia');
-  btnGuardar = document.getElementById('btnGuardar');
-  inputNombre = document.getElementById('inputNombre');
-  inputFecha = document.getElementById('inputFecha');
-  inputHoraEntrada = document.getElementById('inputHoraEntrada');
-  inputHoraSalida = document.getElementById('inputHoraSalida');
-  selectEstado = document.getElementById('selectEstado');
-  errorNombre = document.getElementById('errorNombre');
-  btnLimpiar = document.getElementById('btnLimpiar');
+  contenedorListaAlumnos = document.getElementById('contenedorListaAlumnos');
+  inputFechaGrupo = document.getElementById('inputFechaGrupo');
+  btnGuardarAsistenciaDia = document.getElementById('btnGuardarAsistenciaDia');
+  btnMarcarPresentes = document.getElementById('btnMarcarPresentes');
+  btnMarcarFaltas = document.getElementById('btnMarcarFaltas');
 
   tbodyAsistencia = document.getElementById('tbodyAsistencia');
   emptyState = document.getElementById('emptyState');
@@ -615,16 +577,12 @@ function inicializarApp() {
   statRetardosHoy = document.getElementById('statRetardosHoy');
   statFaltasHoy = document.getElementById('statFaltasHoy');
 
-  btnCargarDemo = document.getElementById('btnCargarDemo');
   btnBorrarTodo = document.getElementById('btnBorrarTodo');
   toastNotification = document.getElementById('toastNotification');
   toastMessage = document.getElementById('toastMessage');
 
   const hoy = getFechaLocalActual();
-  const hora = getHoraLocalActual();
-
-  if (inputFecha) inputFecha.value = hoy;
-  if (inputHoraEntrada) inputHoraEntrada.value = hora;
+  if (inputFechaGrupo) inputFechaGrupo.value = hoy;
 
   if (currentDateDisplay) {
     const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -632,34 +590,29 @@ function inicializarApp() {
     currentDateDisplay.textContent = fechaTexto.charAt(0).toUpperCase() + fechaTexto.slice(1);
   }
 
-  if (formAsistencia) {
-    formAsistencia.addEventListener('submit', registrarAsistencia);
+  // Renderizar la lista fija del grupo de 15 alumnos
+  renderListaGrupo();
+
+  // Escuchadores de eventos
+  if (btnGuardarAsistenciaDia) {
+    btnGuardarAsistenciaDia.addEventListener('click', guardarAsistenciaDelDia);
   }
 
-  if (btnGuardar) {
-    btnGuardar.addEventListener('click', registrarAsistencia);
-    console.log('✅ Event listener asignado directamente a btnGuardar');
+  if (btnMarcarPresentes) {
+    btnMarcarPresentes.addEventListener('click', () => marcarTodosComo('Presente'));
   }
 
-  if (btnLimpiar) {
-    btnLimpiar.addEventListener('click', resetFormulario);
+  if (btnMarcarFaltas) {
+    btnMarcarFaltas.addEventListener('click', () => marcarTodosComo('Falta'));
   }
 
   if (filtroNombre) filtroNombre.addEventListener('input', renderTabla);
   if (filtroEstado) filtroEstado.addEventListener('change', renderTabla);
   if (filtroFecha) filtroFecha.addEventListener('change', renderTabla);
 
-  if (btnCargarDemo) btnCargarDemo.addEventListener('click', cargarDatosDemo);
   if (btnBorrarTodo) btnBorrarTodo.addEventListener('click', borrarTodosLosRegistros);
 
-  if (inputNombre) {
-    inputNombre.addEventListener('input', () => {
-      if (errorNombre && inputNombre.value.trim().length > 0) {
-        errorNombre.classList.remove('visible');
-      }
-    });
-  }
-
+  // Cargar datos guardados previamente
   cargarDeStorage();
 }
 

@@ -32,7 +32,7 @@
       </div>
     </header>
 
-    <!-- Tarjetas de Resumen Superior con Paleta Pastel: Requisito #3 -->
+    <!-- Tarjetas de Resumen Superior -->
     <section class="dashboard-stats">
       <!-- Tarjeta Principal Destacada: "Hoy llegaron X alumnos" -->
       <div class="stat-card stat-card-main">
@@ -42,11 +42,11 @@
         <div class="stat-info">
           <span class="stat-title">Asistencias del Día</span>
           <h2 id="cardTotalHoy" class="stat-value">Hoy llegaron 0 alumnos</h2>
-          <p class="stat-description" id="cardSubtextHoy">Calculado automáticamente en base a la fecha de hoy.</p>
+          <p class="stat-description" id="cardSubtextHoy">Calculado automáticamente en base a los registros guardados.</p>
         </div>
       </div>
 
-      <!-- Tarjeta Secundaria: Presentes (Menta Suave) -->
+      <!-- Tarjeta Secundaria: Presentes -->
       <div class="stat-card stat-card-presente">
         <div class="stat-mini-info">
           <span class="stat-mini-title">Presentes Hoy</span>
@@ -55,7 +55,7 @@
         <div class="stat-mini-badge badge-presente">✨ A tiempo</div>
       </div>
 
-      <!-- Tarjeta Secundaria: Retardos (Miel/Melocotón Pastel) -->
+      <!-- Tarjeta Secundaria: Retardos -->
       <div class="stat-card stat-card-retardo">
         <div class="stat-mini-info">
           <span class="stat-mini-title">Retardos Hoy</span>
@@ -64,7 +64,7 @@
         <div class="stat-mini-badge badge-retardo">⏳ Con demora</div>
       </div>
 
-      <!-- Tarjeta Secundaria: Faltas (Rosa Claro / Nube) -->
+      <!-- Tarjeta Secundaria: Faltas -->
       <div class="stat-card stat-card-falta">
         <div class="stat-mini-info">
           <span class="stat-mini-title">Faltas Hoy</span>
@@ -74,89 +74,61 @@
       </div>
     </section>
 
-    <!-- Contenido Principal: Formulario + Tabla -->
+    <!-- Contenido Principal: Pase de Lista Rápido del Grupo + Historial -->
     <main class="main-content">
       
-      <!-- Formulario de Registro con Bordes Suaves: Requisito #1 -->
-      <section class="card form-section">
-        <div class="card-header">
-          <h2>
-            <span class="section-emoji">📝</span>
-            Registrar Asistencia
-          </h2>
-          <p>Ingresa los datos del alumno para guardar su asistencia</p>
-        </div>
-
-        <form id="formAsistencia" class="attendance-form" novalidate>
-          <!-- Nombre del alumno -->
-          <div class="form-group">
-            <label for="inputNombre">Nombre del alumno <span class="required">*</span></label>
-            <div class="input-with-icon">
-              <span class="input-icon">👤</span>
-              <input type="text" id="inputNombre" placeholder="Ej. Ana Lucía Fernández" required autocomplete="off">
-            </div>
-            <span class="form-error" id="errorNombre">Por favor ingresa el nombre del alumno.</span>
-          </div>
-
-          <!-- Fecha -->
-          <div class="form-group">
-            <label for="inputFecha">Fecha <span class="required">*</span></label>
-            <input type="date" id="inputFecha" required>
-          </div>
-
-          <!-- Fila: Hora Entrada y Hora Salida -->
-          <div class="form-row">
-            <div class="form-group">
-              <label for="inputHoraEntrada">Hora de entrada <span class="required">*</span></label>
-              <input type="time" id="inputHoraEntrada" required>
-            </div>
-            <div class="form-group">
-              <label for="inputHoraSalida">Hora de salida <span class="optional">(opcional)</span></label>
-              <input type="time" id="inputHoraSalida">
-            </div>
-          </div>
-
-          <!-- Estado -->
-          <div class="form-group">
-            <label for="selectEstado">Estado <span class="required">*</span></label>
-            <div class="select-wrapper">
-              <select id="selectEstado" required>
-                <option value="Presente">✨ Presente (A tiempo)</option>
-                <option value="Retardo">⏳ Retardo (Llegada tarde)</option>
-                <option value="Falta">💤 Falta (No asistió)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Botones de Acción -->
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="btnGuardar">
-              <span>💖</span>
-              Guardar Asistencia
-            </button>
-            <button type="button" class="btn btn-secondary" id="btnLimpiar">
-              Limpiar
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <!-- Tabla de Alumnos con Filas Alternadas Pastel: Requisito #2 -->
-      <section class="card table-section">
+      <!-- Sección de Pase de Lista del Grupo -->
+      <section class="card group-attendance-section">
         <div class="card-header table-header-flex">
           <div>
             <h2>
               <span class="section-emoji">📋</span>
-              Lista de Alumnos Registrados
+              Pase de Lista del Grupo
             </h2>
-            <p>Registro continuo de asistencia escolar con diseño limpio</p>
+            <p>Selecciona el estado de cada alumno y guarda la asistencia del día en un solo clic</p>
+          </div>
+          <div class="group-actions-bar">
+            <div class="date-input-wrapper">
+              <label for="inputFechaGrupo" class="date-input-label">📅 Fecha:</label>
+              <input type="date" id="inputFechaGrupo" class="input-date-small">
+            </div>
+            <button class="btn btn-outline-sm" id="btnMarcarPresentes" title="Marcar a todos como Presentes">
+              ✨ Todos Presentes
+            </button>
+            <button class="btn btn-outline-danger-sm" id="btnMarcarFaltas" title="Marcar a todos como Faltas">
+              💤 Todos Faltas
+            </button>
+          </div>
+        </div>
+
+        <!-- Lista Fija de Alumnos con Avatares e Iniciales -->
+        <div class="students-list-wrapper">
+          <div id="contenedorListaAlumnos" class="students-grid">
+            <!-- Se llena dinámicamente desde app.js -->
+          </div>
+        </div>
+
+        <!-- Botón Único Principal para Guardar Asistencia del Día -->
+        <div class="group-footer-actions">
+          <button type="button" class="btn btn-primary btn-block btn-lg" id="btnGuardarAsistenciaDia">
+            💖 Guardar Asistencia del Día
+          </button>
+        </div>
+      </section>
+
+      <!-- Tabla de Historial y Registros Guardados -->
+      <section class="card table-section">
+        <div class="card-header table-header-flex">
+          <div>
+            <h2>
+              <span class="section-emoji">🗂️</span>
+              Historial de Asistencias Guardadas
+            </h2>
+            <p>Registro continuo guardado en Supabase / Almacenamiento local</p>
           </div>
           <div class="table-actions">
-            <button class="btn btn-outline-sm" id="btnCargarDemo" title="Cargar ejemplos para probar">
-              🌷 Cargar ejemplos
-            </button>
             <button class="btn btn-outline-danger-sm" id="btnBorrarTodo" title="Limpiar todos los registros">
-              🗑️ Borrar todo
+              🗑️ Vaciar Historial
             </button>
           </div>
         </div>
@@ -165,7 +137,7 @@
         <div class="table-controls">
           <div class="search-box">
             <span class="search-icon">🔍</span>
-            <input type="text" id="filtroNombre" placeholder="Buscar por alumno...">
+            <input type="text" id="filtroNombre" placeholder="Buscar alumno en el historial...">
           </div>
 
           <div class="filters-group">
@@ -191,8 +163,7 @@
                 <th style="width: 50px;">#</th>
                 <th>Alumno</th>
                 <th>Fecha</th>
-                <th>Entrada</th>
-                <th>Salida</th>
+                <th>Hora</th>
                 <th>Estado</th>
                 <th class="text-center" style="width: 90px;">Acción</th>
               </tr>
@@ -205,14 +176,14 @@
           <!-- Mensaje cuando no hay registros -->
           <div id="emptyState" class="empty-state hidden">
             <div class="empty-icon">🧸</div>
-            <h3>¡Aún no hay registros aquí!</h3>
-            <p>Registra un nuevo alumno usando el formulario o haz clic en "Cargar ejemplos" para ver una muestra.</p>
+            <h3>¡Aún no hay registros en el historial!</h3>
+            <p>Selecciona los estados del grupo arriba y haz clic en "Guardar Asistencia del Día".</p>
           </div>
         </div>
 
         <!-- Pie de la tabla -->
         <div class="table-footer">
-          <span id="conteoRegistros">Mostrando 0 registros</span>
+          <span id="conteoRegistros">Mostrando 0 registros guardados</span>
         </div>
       </section>
 
